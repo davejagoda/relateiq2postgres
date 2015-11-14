@@ -17,3 +17,5 @@ Sometimes you really need a database.
 # Resources
 
 https://api.salesforceiq.com
+
+http://www.postgresql.org/docs/current/static/datatype.html
