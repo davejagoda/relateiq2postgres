@@ -13,3 +13,7 @@ Sometimes you really need a database.
 `source venv/bin/activate`
 
 `pip install -r requirements.txt`
+
+# Resources
+
+https://api.salesforceiq.com
