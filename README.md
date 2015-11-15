@@ -14,6 +14,13 @@ Sometimes you really need a database.
 
 `pip install -r requirements.txt`
 
+# Mapping of types from Python to Postgres
+
+|python |postgres|
+|-------|--------|
+|int    |bigint  |
+|unicode|text    |
+
 # Resources
 
 https://api.salesforceiq.com
