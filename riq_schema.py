@@ -31,7 +31,7 @@ def get_lists(riq_key, riq_secret, verbose=False):
 
 if '__main__' == __name__:
     parser = argparse.ArgumentParser()
-    parser.add_argument('-s', '--suppressSSLwarning', action='store_true', help='surpress SSL warning')
+    parser.add_argument('-s', '--suppressSSLwarning', action='store_true', help='suppress SSL warning')
     parser.add_argument('-v', '--verbose', action='store_true', help='be verbose')
     args = parser.parse_args()
     if args.verbose: print('verbose')
