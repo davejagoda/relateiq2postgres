@@ -1,6 +1,30 @@
 #!/usr/bin/env python
 
-import argparse, os, sys, requests, json, logging
+import argparse, os, sys, requests, json, logging, pprint
+
+def get_static_schema(object, verbose=False):
+    if verbose:
+        for key in object.keys():
+            print('key:{} type(object[key]):{}'.format(key, type(object[key])))
+            if list != type(object[key]):
+                print('{}-{}'.format(key,object[key]))
+    return(object['id'],object['listType'],object['title'])
+
+def get_dynamic_schema(object, verbose=False):
+    columns = []
+    if verbose:
+        pprint.pprint(object['fields'])
+    for field in object['fields']:
+        assert(7 == len(field.keys()))
+        assert(unicode == type(field['dataType']))
+        assert(unicode == type(field['id']))
+        assert(unicode == type(field['name']))
+        assert(bool == type(field['isEditable']))
+        assert(bool == type(field['isLinkedField']))
+        assert(bool == type(field['isMultiSelect']))
+        assert(list == type(field['listOptions']))
+        columns.append((field['id'],field['name'], field['dataType']))
+    return(columns)
 
 def get_lists(riq_key, riq_secret, verbose=False):
     url = 'https://api.salesforceiq.com/v2/lists'
@@ -22,12 +46,7 @@ def get_lists(riq_key, riq_secret, verbose=False):
         assert(unicode == type(object['title']))
         assert(unicode == type(object['listType']))
         assert(list == type(object['fields']))
-        if verbose:
-            for key in object.keys():
-                print('key:{} type(object[key]):{}'.format(key, type(object[key])))
-                if list != type(object[key]):
-                    print('{}-{}'.format(key,object[key]))
-    return(['{}:{}:{}'.format(object['id'],object['listType'],object['title']) for object in d['objects']])
+    return(d['objects'])
 
 if '__main__' == __name__:
     parser = argparse.ArgumentParser()
@@ -45,5 +64,10 @@ if '__main__' == __name__:
         print('please set RelateIQAPISecret environment variable')
         sys.exit(1)
     print('         listId          listype listitle')
-    for result in get_lists(riq_key, riq_secret, verbose=args.verbose):
-        print(result)
+    for object in get_lists(riq_key, riq_secret, verbose=args.verbose):
+        print(' {}'.format('#'.join(get_static_schema(object, verbose=args.verbose))))
+        #print('{}:{}:{}'.format(get_static_schema(object, verbose=args.verbose)))
+        dynamic_schema = []
+        for (field_id, field_name, field_type) in get_dynamic_schema(object, verbose=args.verbose):
+            dynamic_schema.append('{}:{}:{}'.format(field_id, field_name, field_type))
+        print('  {}'.format('#'.join(dynamic_schema)))
