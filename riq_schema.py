@@ -2,17 +2,17 @@
 
 import argparse, os, sys, requests, json, logging, pprint
 
-def get_static_schema(object, verbose=False):
-    if verbose:
+def get_static_schema(object, verbose=0):
+    if verbose > 1:
         for key in object.keys():
             print('key:{} type(object[key]):{}'.format(key, type(object[key])))
             if list != type(object[key]):
                 print('{}-{}'.format(key,object[key]))
     return(object['id'],object['listType'],object['title'])
 
-def get_dynamic_schema(object, verbose=False):
+def get_dynamic_schema(object, verbose=0):
     columns = []
-    if verbose:
+    if verbose > 1:
         pprint.pprint(object['fields'])
     for field in object['fields']:
         assert(7 == len(field.keys()))
@@ -26,18 +26,18 @@ def get_dynamic_schema(object, verbose=False):
         columns.append((field['id'],field['name'], field['dataType']))
     return(columns)
 
-def get_lists(riq_key, riq_secret, verbose=False):
+def get_lists(riq_key, riq_secret, verbose=0):
     url = 'https://api.salesforceiq.com/v2/lists'
     r = requests.request('GET', url, auth=(riq_key,riq_secret))
     assert(unicode == type(r.text))
     assert(200 == r.status_code)
-    if verbose: print(r.text)
+    if verbose > 2: print(r.text)
     d = json.loads(r.text)
     assert(dict == type(d))
     assert(2 == len(d))
     assert(d['nextPage'] == None)
     assert(list == type(d['objects']))
-    if verbose: print('# of objects:{}'.format(len(d['objects'])))
+    if verbose > 0: print('# of objects:{}'.format(len(d['objects'])))
     for object in d['objects']:
         assert(6 == len(object.keys()))
         assert(0 == object['size']) # omit
@@ -51,9 +51,10 @@ def get_lists(riq_key, riq_secret, verbose=False):
 if '__main__' == __name__:
     parser = argparse.ArgumentParser()
     parser.add_argument('-s', '--suppressSSLwarning', action='store_true', help='suppress SSL warning')
-    parser.add_argument('-v', '--verbose', action='store_true', help='be verbose')
+    parser.add_argument('-v', '--verbose', action='count', help='be verbose')
+    parser.add_argument('-d', '--ddl', action='store_true', help='emit data definition')
     args = parser.parse_args()
-    if args.verbose: print('verbose')
+    if args.verbose > 0: print('verbosity level:{}'.format(args.verbose))
     if args.suppressSSLwarning: logging.captureWarnings(True)
     riq_key = os.getenv('RelateIQAPIKey')
     if None == riq_key:
@@ -65,9 +66,8 @@ if '__main__' == __name__:
         sys.exit(1)
     print('         listId          listype listitle')
     for object in get_lists(riq_key, riq_secret, verbose=args.verbose):
-        print(' {}'.format('#'.join(get_static_schema(object, verbose=args.verbose))))
-        #print('{}:{}:{}'.format(get_static_schema(object, verbose=args.verbose)))
+        print('{}'.format('#'.join(get_static_schema(object, verbose=args.verbose))))
         dynamic_schema = []
         for (field_id, field_name, field_type) in get_dynamic_schema(object, verbose=args.verbose):
             dynamic_schema.append('{}:{}:{}'.format(field_id, field_name, field_type))
-        print('  {}'.format('#'.join(dynamic_schema)))
+        if args.verbose > 0: print(' {}'.format('#'.join(dynamic_schema)))
