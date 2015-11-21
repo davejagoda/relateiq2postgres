@@ -1,6 +1,11 @@
 #!/usr/bin/env python
 
-import argparse, os, sys, requests, json, logging, pprint
+import argparse, os, sys, requests, json, logging, pprint, re
+
+def normalize_name(name):
+    name = re.sub('[():?/_]', ' ', name)
+    name = '_'.join(name.split())
+    return(name.lower())
 
 def get_static_schema(object, verbose=0):
     if verbose > 1:
@@ -23,7 +28,7 @@ def get_dynamic_schema(object, verbose=0):
         assert(bool == type(field['isLinkedField']))
         assert(bool == type(field['isMultiSelect']))
         assert(list == type(field['listOptions']))
-        columns.append((field['id'],field['name'], field['dataType']))
+        columns.append((field['id'], field['name'], field['dataType']))
     return(columns)
 
 def get_lists(riq_key, riq_secret, verbose=0):
@@ -52,7 +57,7 @@ if '__main__' == __name__:
     parser = argparse.ArgumentParser()
     parser.add_argument('-s', '--suppressSSLwarning', action='store_true', help='suppress SSL warning')
     parser.add_argument('-v', '--verbose', action='count', help='be verbose')
-    parser.add_argument('-d', '--ddl', action='store_true', help='emit data definition')
+    parser.add_argument('-d', '--ddl', help='write data definition language to this file')
     args = parser.parse_args()
     if args.verbose > 0: print('verbosity level:{}'.format(args.verbose))
     if args.suppressSSLwarning: logging.captureWarnings(True)
@@ -66,8 +71,18 @@ if '__main__' == __name__:
         sys.exit(1)
     print('         listId          listype listitle')
     for object in get_lists(riq_key, riq_secret, verbose=args.verbose):
+        if args.ddl: ddl_data = []
         print('{}'.format('#'.join(get_static_schema(object, verbose=args.verbose))))
         dynamic_schema = []
         for (field_id, field_name, field_type) in get_dynamic_schema(object, verbose=args.verbose):
+            if args.ddl: ddl_data.append((normalize_name(field_name), field_type))
             dynamic_schema.append('{}:{}:{}'.format(field_id, field_name, field_type))
         if args.verbose > 0: print(' {}'.format('#'.join(dynamic_schema)))
+        if args.ddl:
+            with open(args.ddl, 'a') as f:
+                f.write('CREATE TABLE {} (\n'.format(normalize_name(object['title'])))
+                midamble = []
+                for (column_name, column_type) in ddl_data:
+                    midamble.append('    {} {}'.format(column_name, column_type))
+                f.write(',\n'.join(midamble))
+                f.write('\n);\n')
