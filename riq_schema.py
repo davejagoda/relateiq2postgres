@@ -7,7 +7,10 @@ def normalize_name(name):
 # however do need to escape the '
     name = re.sub('[():?/_"\'-]', ' ', name)
     name = '_'.join(name.split())
-    return(name.lower())
+    name = name.lower()
+    if not re.match('[_a-z]', name):
+        name = '_' + name
+    return(name)
 
 def get_static_schema(object, verbose=0):
     if verbose > 1:
@@ -85,6 +88,10 @@ if '__main__' == __name__:
     if None == riq_secret:
         print('please set RelateIQAPISecret environment variable')
         sys.exit(1)
+    if args.ddl:
+        with open(args.ddl, 'a') as f:
+            f.write('CREATE DATABASE relateiq;\n\n')
+            f.write('\c relateiq\n\n')
     print('         listId          listype listitle')
     for object in get_lists(riq_key, riq_secret, verbose=args.verbose):
         if args.ddl:
