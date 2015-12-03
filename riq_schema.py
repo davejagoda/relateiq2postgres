@@ -33,19 +33,19 @@ def get_dynamic_schema(object, verbose=0):
         columns.append((field['id'], field['name'], field['dataType']))
     return(columns)
 
-def riq_schema_to_postgres_schema():
-    riq2pg = {
-        'Numeric': bigint,
-        'DateTime': timestamp,
-        'Date': date,
-        'Text': text,
-        'Url': text,
-        'Contact': text, # these are links to other tables
-        'User': text, #these are relateIQ users? owners?
-        'File': text, #are these ever used?
-        'ItemLink': text, #what are these?
-        'List': text # is this the list id itself?
-        }
+def make_riq_schema_to_postgres_schema():
+    return({
+        'Numeric': 'bigint',
+        'DateTime': 'timestamp',
+        'Date': 'date',
+        'Text': 'text',
+        'Url': 'text',
+        'Contact': 'text', # these are links to other tables
+        'User': 'text', #these are relateIQ users? owners?
+        'File': 'text', #are these ever used?
+        'ItemLink': 'text', #what are these?
+        'List': 'text' # is this the list id itself?
+        })
 
 def get_lists(riq_key, riq_secret, verbose=0):
     url = 'https://api.salesforceiq.com/v2/lists'
@@ -87,7 +87,9 @@ if '__main__' == __name__:
         sys.exit(1)
     print('         listId          listype listitle')
     for object in get_lists(riq_key, riq_secret, verbose=args.verbose):
-        if args.ddl: ddl_data = []
+        if args.ddl:
+            ddl_data = []
+            riq2pg = make_riq_schema_to_postgres_schema()
         print('{}'.format('#'.join(get_static_schema(object, verbose=args.verbose))))
         dynamic_schema = []
         for (field_id, field_name, field_type) in get_dynamic_schema(object, verbose=args.verbose):
@@ -99,8 +101,8 @@ if '__main__' == __name__:
                 f.write('CREATE TABLE {} (\n'.format(normalize_name(object['title'])))
                 midamble = []
                 for (column_name, column_type) in ddl_data:
-                    midamble.append('    {} {}'.format(column_name, column_type))
-                    if args.verbose > 0: print('COLTYPE:{}'.format(column_type))
+                    midamble.append('    {} {}'.format(column_name, riq2pg[column_type]))
+                    if args.verbose > 0: print('RIQCOLTYPE:{} SQLCOLTYPE:{}'.format(column_type, riq2pg[column_type]))
                 f.write(',\n'.join(midamble))
                 f.write('\n);\n\n')
     if args.ddl:
