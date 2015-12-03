@@ -3,7 +3,9 @@
 import argparse, os, sys, requests, json, logging, pprint, re
 
 def normalize_name(name):
-    name = re.sub('[():?/_]', ' ', name)
+# this RE is subtle - don't need to escape the - since it's last
+# however do need to escape the '
+    name = re.sub('[():?/_"\'-]', ' ', name)
     name = '_'.join(name.split())
     return(name.lower())
 
@@ -30,6 +32,20 @@ def get_dynamic_schema(object, verbose=0):
         assert(list == type(field['listOptions']))
         columns.append((field['id'], field['name'], field['dataType']))
     return(columns)
+
+def riq_schema_to_postgres_schema():
+    riq2pg = {
+        'Numeric': bigint,
+        'DateTime': timestamp,
+        'Date': date,
+        'Text': text,
+        'Url': text,
+        'Contact': text, # these are links to other tables
+        'User': text, #these are relateIQ users? owners?
+        'File': text, #are these ever used?
+        'ItemLink': text, #what are these?
+        'List': text # is this the list id itself?
+        }
 
 def get_lists(riq_key, riq_secret, verbose=0):
     url = 'https://api.salesforceiq.com/v2/lists'
@@ -84,5 +100,6 @@ if '__main__' == __name__:
                 midamble = []
                 for (column_name, column_type) in ddl_data:
                     midamble.append('    {} {}'.format(column_name, column_type))
+                    if args.verbose > 0: print('COLTYPE:{}'.format(column_type))
                 f.write(',\n'.join(midamble))
-                f.write('\n);\n')
+                f.write('\n);\n\n')
