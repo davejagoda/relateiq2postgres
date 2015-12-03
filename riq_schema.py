@@ -103,3 +103,10 @@ if '__main__' == __name__:
                     if args.verbose > 0: print('COLTYPE:{}'.format(column_type))
                 f.write(',\n'.join(midamble))
                 f.write('\n);\n\n')
+    if args.ddl:
+        with open(args.ddl, 'a') as f:
+            f.write('CREATE TABLE table_of_tables (\n')
+            f.write('    id text,\n')
+            f.write('    title text,\n')
+            f.write('    listType text\n')
+            f.write(');\n')
