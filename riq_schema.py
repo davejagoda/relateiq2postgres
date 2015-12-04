@@ -50,13 +50,39 @@ def make_riq_schema_to_postgres_schema():
         'List': 'text' # is this the list id itself?
         })
 
-def get_lists(riq_key, riq_secret, verbose=0):
-    url = 'https://api.salesforceiq.com/v2/lists'
+def get_raw_http_data(url, verbose=0):
+    riq_key = os.getenv('RelateIQAPIKey')
+    if None == riq_key:
+        print('please set RelateIQAPIKey environment variable')
+        sys.exit(1)
+    riq_secret = os.getenv('RelateIQAPISecret')
+    if None == riq_secret:
+        print('please set RelateIQAPISecret environment variable')
+        sys.exit(1)
     r = requests.request('GET', url, auth=(riq_key,riq_secret))
     assert(unicode == type(r.text))
     assert(200 == r.status_code)
     if verbose > 2: print(r.text)
     d = json.loads(r.text)
+    assert(dict == type(d))
+    assert(2 == len(d))
+    assert(d['nextPage'] == None)
+    assert(list == type(d['objects']))
+    if verbose > 0: print('# of objects:{}'.format(len(d['objects'])))
+    for object in d['objects']:
+        assert(6 == len(object.keys()))
+        assert(0 == object['size']) # omit
+        assert(0 == object['modifiedDate']) # omit
+        assert(unicode == type(object['id']))
+        assert(unicode == type(object['title']))
+        assert(unicode == type(object['listType']))
+        assert(list == type(object['fields']))
+    return(r.text)
+
+def get_lists(rawHTTPdata, verbose=0):
+    assert(unicode == type(rawHTTPdata))
+    if verbose > 2: print(rawHTTPdata)
+    d = json.loads(rawHTTPdata)
     assert(dict == type(d))
     assert(2 == len(d))
     assert(d['nextPage'] == None)
@@ -77,23 +103,26 @@ if '__main__' == __name__:
     parser.add_argument('-s', '--suppressSSLwarning', action='store_true', help='suppress SSL warning')
     parser.add_argument('-v', '--verbose', action='count', help='be verbose')
     parser.add_argument('-d', '--ddl', help='write data definition language to this file')
+    group = parser.add_mutually_exclusive_group(required=True)
+    # if you read the data from the network, save it a file
+    group.add_argument('-n', '--networkHTTPdata')
+    group.add_argument('-f', '--fileHTTPdata')
     args = parser.parse_args()
     if args.verbose > 0: print('verbosity level:{}'.format(args.verbose))
     if args.suppressSSLwarning: logging.captureWarnings(True)
-    riq_key = os.getenv('RelateIQAPIKey')
-    if None == riq_key:
-        print('please set RelateIQAPIKey environment variable')
-        sys.exit(1)
-    riq_secret = os.getenv('RelateIQAPISecret')
-    if None == riq_secret:
-        print('please set RelateIQAPISecret environment variable')
-        sys.exit(1)
+    if args.fileHTTPdata:
+        with open(args.fileHTTPdata, 'r') as f:
+            rawHTTPdata = f.read().decode('utf8')
+    else:
+        rawHTTPdata = get_raw_http_data('https://api.salesforceiq.com/v2/lists', verbose=args.verbose)
+        with open(args.networkHTTPdata, 'w') as f:
+            f.write(rawHTTPdata.encode('utf8'))
     if args.ddl:
         with open(args.ddl, 'a') as f:
             f.write('CREATE DATABASE relateiq;\n\n')
             f.write('\c relateiq\n\n')
     print('         listId          listype listitle')
-    for object in get_lists(riq_key, riq_secret, verbose=args.verbose):
+    for object in get_lists(rawHTTPdata, verbose=args.verbose):
         if args.ddl:
             ddl_data = []
             riq2pg = make_riq_schema_to_postgres_schema()
