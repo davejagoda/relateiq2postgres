@@ -51,6 +51,7 @@ def make_riq_schema_to_postgres_schema():
         })
 
 def get_raw_http_data(url, verbose=0):
+# it's not really going to be raw - it will be a list of chunks
     riq_key = os.getenv('RelateIQAPIKey')
     if None == riq_key:
         print('please set RelateIQAPIKey environment variable')
@@ -59,44 +60,54 @@ def get_raw_http_data(url, verbose=0):
     if None == riq_secret:
         print('please set RelateIQAPISecret environment variable')
         sys.exit(1)
-    r = requests.request('GET', url, auth=(riq_key,riq_secret))
-    assert(unicode == type(r.text))
-    assert(200 == r.status_code)
-    if verbose > 2: print(r.text)
-    d = json.loads(r.text)
-    assert(dict == type(d))
-    assert(2 == len(d))
-    assert(d['nextPage'] == None)
-    assert(list == type(d['objects']))
-    if verbose > 0: print('# of objects:{}'.format(len(d['objects'])))
-    for object in d['objects']:
-        assert(6 == len(object.keys()))
-        assert(0 == object['size']) # omit
-        assert(0 == object['modifiedDate']) # omit
-        assert(unicode == type(object['id']))
-        assert(unicode == type(object['title']))
-        assert(unicode == type(object['listType']))
-        assert(list == type(object['fields']))
-    return(r.text)
+    done = False
+    start = 0
+    limit = 10 # this should be at least 20 but wanted test chunking works
+    list_of_http_data = []
+    while not done:
+        chunkurl = '{}?_start={}&_limit={}'.format(url, start, limit)
+        r = requests.request('GET', chunkurl, auth=(riq_key,riq_secret))
+        if verbose > 2: print(r.text)
+        assert(unicode == type(r.text))
+        assert(200 == r.status_code)
+        d = json.loads(r.text)
+        assert(dict == type(d))
+        assert(2 == len(d))
+        assert(d['nextPage'] == None)
+        assert(list == type(d['objects']))
+        if verbose > 0: print('# of objects:{}'.format(len(d['objects'])))
+        for object in d['objects']:
+            assert(6 == len(object.keys()))
+            assert(0 == object['size']) # omit
+            assert(0 == object['modifiedDate']) # omit
+            assert(unicode == type(object['id']))
+            assert(unicode == type(object['title']))
+            assert(unicode == type(object['listType']))
+            assert(list == type(object['fields']))
+        list_of_http_data.append(r.text)
+        start += limit
+        if len(d['objects']) < limit: done = True
+    return(list_of_http_data)
 
-def get_lists(rawHTTPdata, verbose=0):
-    assert(unicode == type(rawHTTPdata))
-    if verbose > 2: print(rawHTTPdata)
-    d = json.loads(rawHTTPdata)
-    assert(dict == type(d))
-    assert(2 == len(d))
-    assert(d['nextPage'] == None)
-    assert(list == type(d['objects']))
-    if verbose > 0: print('# of objects:{}'.format(len(d['objects'])))
-    for object in d['objects']:
-        assert(6 == len(object.keys()))
-        assert(0 == object['size']) # omit
-        assert(0 == object['modifiedDate']) # omit
-        assert(unicode == type(object['id']))
-        assert(unicode == type(object['title']))
-        assert(unicode == type(object['listType']))
-        assert(list == type(object['fields']))
-    return(d['objects'])
+def get_lists(list_of_http_data, verbose=0):
+    results = []
+    for http_data in list_of_http_data:
+        d = json.loads(http_data)
+        assert(dict == type(d))
+        assert(2 == len(d)) # exactly 2 keys: 'nextPage' and 'objects'
+        assert(d['nextPage'] == None)
+        assert(list == type(d['objects']))
+        if verbose > 0: print('# of objects:{}'.format(len(d['objects'])))
+        for object in d['objects']:
+            assert(6 == len(object.keys()))
+            assert(0 == object['size']) # omit
+            assert(0 == object['modifiedDate']) # omit
+            assert(unicode == type(object['id']))
+            assert(unicode == type(object['title']))
+            assert(unicode == type(object['listType']))
+            assert(list == type(object['fields']))
+        results.extend(d['objects'])
+    return(results)
 
 if '__main__' == __name__:
     parser = argparse.ArgumentParser()
@@ -112,17 +123,17 @@ if '__main__' == __name__:
     if args.suppressSSLwarning: logging.captureWarnings(True)
     if args.fileHTTPdata:
         with open(args.fileHTTPdata, 'r') as f:
-            rawHTTPdata = f.read().decode('utf8')
+            list_of_http_data = f.readlines()
     else:
-        rawHTTPdata = get_raw_http_data('https://api.salesforceiq.com/v2/lists', verbose=args.verbose)
+        list_of_http_data = get_raw_http_data('https://api.salesforceiq.com/v2/lists', verbose=args.verbose)
         with open(args.networkHTTPdata, 'w') as f:
-            f.write(rawHTTPdata.encode('utf8'))
+            f.write(u'\n'.join(list_of_http_data).encode('utf8'))
     if args.ddl:
         with open(args.ddl, 'a') as f:
             f.write('CREATE DATABASE relateiq;\n\n')
             f.write('\c relateiq\n\n')
     print('         listId          listype listitle')
-    for object in get_lists(rawHTTPdata, verbose=args.verbose):
+    for object in get_lists(list_of_http_data, verbose=args.verbose):
         if args.ddl:
             ddl_data = []
             riq2pg = make_riq_schema_to_postgres_schema()
