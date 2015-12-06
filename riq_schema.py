@@ -50,6 +50,20 @@ def make_riq_schema_to_postgres_schema():
         'List': 'text' # is this the list id itself?
         })
 
+def validate_dictionary_of_http_data(d):
+    assert(dict == type(d))
+    assert(2 == len(d)) # exactly 2 keys: 'nextPage' and 'objects'
+    assert(d['nextPage'] == None)
+    assert(list == type(d['objects']))
+    for object in d['objects']:
+        assert(6 == len(object.keys()))
+        assert(0 == object['size']) # omit
+        assert(0 == object['modifiedDate']) # omit
+        assert(unicode == type(object['id']))
+        assert(unicode == type(object['title']))
+        assert(unicode == type(object['listType']))
+        assert(list == type(object['fields']))
+
 def get_raw_http_data(url, verbose=0):
 # it's not really going to be raw - it will be a list of chunks
     riq_key = os.getenv('RelateIQAPIKey')
@@ -71,19 +85,8 @@ def get_raw_http_data(url, verbose=0):
         assert(unicode == type(r.text))
         assert(200 == r.status_code)
         d = json.loads(r.text)
-        assert(dict == type(d))
-        assert(2 == len(d))
-        assert(d['nextPage'] == None)
-        assert(list == type(d['objects']))
         if verbose > 0: print('# of objects:{}'.format(len(d['objects'])))
-        for object in d['objects']:
-            assert(6 == len(object.keys()))
-            assert(0 == object['size']) # omit
-            assert(0 == object['modifiedDate']) # omit
-            assert(unicode == type(object['id']))
-            assert(unicode == type(object['title']))
-            assert(unicode == type(object['listType']))
-            assert(list == type(object['fields']))
+        validate_dictionary_of_http_data(d)
         list_of_http_data.append(r.text)
         start += limit
         if len(d['objects']) < limit: done = True
@@ -93,19 +96,8 @@ def get_lists(list_of_http_data, verbose=0):
     results = []
     for http_data in list_of_http_data:
         d = json.loads(http_data)
-        assert(dict == type(d))
-        assert(2 == len(d)) # exactly 2 keys: 'nextPage' and 'objects'
-        assert(d['nextPage'] == None)
-        assert(list == type(d['objects']))
         if verbose > 0: print('# of objects:{}'.format(len(d['objects'])))
-        for object in d['objects']:
-            assert(6 == len(object.keys()))
-            assert(0 == object['size']) # omit
-            assert(0 == object['modifiedDate']) # omit
-            assert(unicode == type(object['id']))
-            assert(unicode == type(object['title']))
-            assert(unicode == type(object['listType']))
-            assert(list == type(object['fields']))
+        validate_dictionary_of_http_data(d)
         results.extend(d['objects'])
     return(results)
 
