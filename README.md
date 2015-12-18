@@ -21,6 +21,14 @@ database (such as Postgres) would be useful.
 
 `pip install -r requirements.txt`
 
+# Objects in SalesforceIQ
+
+- Accounts
+- Contacts
+- Lists
+- Events
+- Users
+
 # Mapping of types from Python to Postgres
 
 |python |postgres|
