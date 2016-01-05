@@ -29,6 +29,22 @@ database (such as Postgres) would be useful.
 - Events
 - Users
 
+## Accounts
+
+- id
+- modifiedDate
+- name
+- fieldValues
+
+## Contacts
+
+- id
+- modifiedDate
+- mergedIds
+- requestedIds
+- state
+- properties
+
 # Mapping of types from Python to Postgres
 
 |python |postgres|
