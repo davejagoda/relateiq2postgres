@@ -52,6 +52,17 @@ database (such as Postgres) would be useful.
 |int    |bigint  |
 |unicode|text    |
 
+# Duplicates
+
+## Can be merged
+
+- Accounts
+- Contacts
+
+## Cannot be merged
+
+- ListItems
+
 # Resources
 
 https://api.salesforceiq.com
