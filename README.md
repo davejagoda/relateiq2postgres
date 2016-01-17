@@ -45,6 +45,11 @@ database (such as Postgres) would be useful.
 - state
 - properties
 
+## Lists
+
+- id
+- modifiedDate
+
 # Mapping of types from Python to Postgres
 
 |python |postgres|
